@@ -13,7 +13,7 @@ float qinticOut(float t) {
 void main() {
     float alpha = 1.0 - step(0.5, length(gl_PointCoord - vec2(0.5)));
     float localProgress = mod(uTime* playhead*2.0 + offset*2.0, 2.0);
-//    localProgress = qinticOut(localProgress/2.0);
+    localProgress = qinticOut(localProgress)*2.0;
     if (vUv.x > localProgress || vUv.x + 1.0 < localProgress) discard;
 
     gl_FragColor = vec4(color, 1.0);
