@@ -1,5 +1,7 @@
+uniform float playhead;
 attribute float sizes;
 varying vec2 vUv;
+
 
 void main() {
     vec4 modelPosition = modelViewMatrix * vec4(position, 1.0);

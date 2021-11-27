@@ -18,7 +18,7 @@ const sizes = {
 const canvas = document.querySelector('canvas.webgl')
 const scene = new THREE.Scene()
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.01, 1000)
-camera.position.set(0, 1, 2)
+camera.position.set(0, 1, 7)
 scene.add(camera)
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true //плавность вращения камеры
@@ -59,34 +59,135 @@ const geometry = new THREE.SphereBufferGeometry(1, 32, 32)
 const material = new THREE.ShaderMaterial({
   side: THREE.DoubleSide,
   transparent: true,
-  depthWrite: false,
-  blending: THREE.AdditiveBlending,
+  // depthWrite: false,
+  // blending: THREE.AdditiveBlending,
   vertexShader: vertexShader,
   fragmentShader: fragmentShader,
   uniforms: {
     uTime: {value: 0},
-    uMouse: {value: new THREE.Vector2(mouse.x, mouse.y)}
+    uMouse: {value: new THREE.Vector2(mouse.x, mouse.y)},
+    playhead: {value: 0},
+    offset: {value: Math.random()},
+    color: {value: new THREE.Color('#ffffff')}
+  }
+})
+const material2 = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  transparent: true,
+  // depthWrite: false,
+  // blending: THREE.AdditiveBlending,
+  vertexShader: vertexShader,
+  fragmentShader: fragmentShader,
+  uniforms: {
+    uTime: {value: 0},
+    uMouse: {value: new THREE.Vector2(mouse.x, mouse.y)},
+    playhead: {value: 0},
+    offset: {value: Math.random()},
+    color: {value: new THREE.Color('#000000')}
   }
 })
 const particle = new THREE.Points(geometry, material)
 // scene.add(particle)
 
-const objectsNumber = 1
-const precision = 100 //точность
-const radius = 1
-for (let i = 0; i < objectsNumber; ++i) {
-  for (let j = 0; j < precision; ++j) {
-    let x = radius * Math.sin(2 * Math.PI * j /precision)
-    let z = radius * Math.cos(2 * Math.PI * j /precision)
-  }
+const objectsNumber = 250
+
+const params = {
+  scale: 4,
+  extrusionSegments: 400,
+  radiusSegments: 16,
+  closed: false
 }
 
+const setRange = (min, max) => {
+  return Math.random() * (max - min) + min
+}
+scene.rotation.z = Math.PI * 0.2
+let circle, circle2
+
+for (let i = 0; i < objectsNumber; ++i) {
+  let spline = []
+  const precision = 100 //точность
+  let angle = setRange(0, 2 * Math.PI)
+  let width = Math.random() * 0.5 + 0.5
+  let level = setRange(-300, 300)
+  const levelRandomRatio = level / 300
+  let offset = Math.abs(levelRandomRatio)
+  let randomValue = Math.random()
+  const radius = 80 * levelRandomRatio * levelRandomRatio + Math.random() * 10
+
+  for (let j = 0; j <= precision * width; ++j) {
+    let x = radius * Math.sin(2 * Math.PI * j / precision)
+    let z = radius * Math.cos(2 * Math.PI * j / precision)
+
+    spline.push(new THREE.Vector3(x, level, z))
+  }
+
+  let sampleClosedSpline = new THREE.CatmullRomCurve3(spline)
+
+  const tubeGeometry = new THREE.TubeBufferGeometry(
+    sampleClosedSpline,
+    params.extrusionSegments,
+    0.5,
+    params.radiusSegments,
+    false
+  )
+
+  const tubeGeometry2 = new THREE.TubeBufferGeometry(
+    sampleClosedSpline,
+    params.extrusionSegments,
+    0.5 + 0.5,
+    params.radiusSegments,
+    false
+  )
+
+  circle = new THREE.Mesh(tubeGeometry, new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    transparent: true,
+    // depthWrite: false,
+    // blending: THREE.AdditiveBlending,
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader,
+    uniforms: {
+      uTime: {value: 0},
+      uMouse: {value: new THREE.Vector2(mouse.x, mouse.y)},
+      playhead: {value: randomValue},
+      offset: {value: offset},
+      color: {value: new THREE.Color('#ffffff')}
+    }
+  }))
+  circle2 = new THREE.Mesh(tubeGeometry2, new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    transparent: true,
+    // depthWrite: false,
+    // blending: THREE.AdditiveBlending,
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader,
+    uniforms: {
+      uTime: {value: 0},
+      uMouse: {value: new THREE.Vector2(mouse.x, mouse.y)},
+      playhead: {value: randomValue},
+      offset: {value: offset},
+      color: {value: new THREE.Color('#000000')}
+    }
+  }))
+
+  circle.scale.set(0.02, 0.02, 0.02)
+  circle2.scale.set(0.02, 0.02, 0.02)
+  circle.rotation.y = circle2.rotation.y = angle
+
+  scene.add(circle)
+  scene.add(circle2)
+}
 
 //---------------------------------------------------------------------------------------------------------
 
+console.log(scene)
 const tick = () => {
   const elapsedTime = clock.getElapsedTime()
-  material.uniforms.uTime.value = elapsedTime
+
+  for (let i = 1; i < scene.children.length; ++i) {
+    scene.children[i].material.uniforms.uTime.value = elapsedTime
+  }
 
   //Update controls
   controls.update() //если включён Damping для камеры необходимо её обновлять в каждом кадре
